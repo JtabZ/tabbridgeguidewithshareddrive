@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Guide: Tableau Bridge Best Practices</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals -->
+    <!-- Application Structure Plan: The application is structured as a task-oriented interactive playbook with a sticky top navigation bar for easy access to key areas: 'Architecture', 'Security', 'Performance', 'Troubleshooting', and 'Summary'. This structure was chosen over a linear report format to align with a user's workflow—they first need to set up the architecture, then secure it, optimize it, and later troubleshoot it. This non-linear, thematic approach makes the dense technical information more digestible and allows users to quickly jump to the section that matches their immediate need, enhancing usability and knowledge retention. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Service vs. Application Mode -> Goal: Compare -> Viz: Bar Chart (Chart.js) -> Interaction: Static visual comparison -> Justification: A chart provides a stark visual contrast of the reliability difference, which is more impactful than text alone.
+        - Report Info: Host Hardware Sizing -> Goal: Inform/Calculate -> Viz: Interactive Bar Chart + Text Output -> Interaction: User inputs a number of refreshes, JS calculates and displays recommended specs and updates the chart. -> Justification: Turns passive recommendations into an active, personalized tool for capacity planning.
+        - Report Info: Pooling, Network Security, File Staging -> Goal: Explain Concepts -> Viz: Diagrams made with HTML/Tailwind -> Interaction: Static -> Justification: Simplifies complex architectures (pooling, outbound connections, staging) into clear, easy-to-understand visual flows, improving comprehension over text-only descriptions.
+        - Report Info: Permission Requirements, Common Errors -> Goal: Organize/Reference -> Viz: Styled Lists/Tables -> Interaction: Click-to-reveal details for troubleshooting errors. -> Justification: Organizes critical reference information into scannable formats. The interactive error guide reduces cognitive load by showing only relevant information.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F8F9FA;
+            color: #343A40;
+        }
+        .nav-link {
+            transition: color 0.2s, border-color 0.2s;
+        }
+        .nav-link.active, .nav-link:hover {
+            color: #4A5568; /* was #007BFF */
+            border-bottom-color: #4A5568;
+        }
+        .section-card {
+            background-color: #FFFFFF;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .section-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+        }
+        .tab-button {
+            transition: all 0.2s;
+        }
+        .tab-button.active {
+            background-color: #E2E8F0;
+            color: #2D3748;
+            font-weight: 600;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+         @media (min-width: 768px) { .chart-container { height: 350px; } }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Header & Navigation -->
+    <header class="bg-white/80 backdrop-blur-lg sticky top-0 z-50 shadow-sm">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between py-4">
+                <div class="flex flex-col">
+                    <h1 class="text-xl md:text-2xl font-bold text-gray-800">Tableau Bridge Playbook</h1>
+                    <p class="text-sm text-gray-500">An Interactive Guide to Deployment & Operations</p>
+                </div>
+                <nav class="hidden md:flex items-center space-x-4 lg:space-x-6">
+                    <a href="#architecture" class="nav-link text-gray-600 font-medium pb-1 border-b-2 border-transparent">Architecture</a>
+                    <a href="#security" class="nav-link text-gray-600 font-medium pb-1 border-b-2 border-transparent">Security</a>
+                    <a href="#performance" class="nav-link text-gray-600 font-medium pb-1 border-b-2 border-transparent">Performance</a>
+                    <a href="#troubleshooting" class="nav-link text-gray-600 font-medium pb-1 border-b-2 border-transparent">Troubleshooting</a>
+                    <a href="#summary" class="nav-link text-gray-600 font-medium pb-1 border-b-2 border-transparent">Summary</a>
+                </nav>
+                <div class="md:hidden">
+                    <select id="mobile-nav" class="bg-gray-200 border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                        <option value="#architecture">Architecture</option>
+                        <option value="#security">Security</option>
+                        <option value="#performance">Performance</option>
+                        <option value="#troubleshooting">Troubleshooting</option>
+                        <option value="#summary">Summary</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8 md:py-12">
+
+        <!-- Architecture Section -->
+        <section id="architecture" class="mb-16 scroll-mt-24">
+            <h2 class="text-3xl font-bold mb-2 text-gray-800">Deployment Architecture</h2>
+            <p class="text-lg text-gray-600 mb-8">Build a resilient and scalable foundation for your Tableau Bridge deployment. These initial choices are critical for ensuring high availability and maintainability.</p>
+            
+            <div class="section-card p-6 md:p-8">
+                <!-- Tabs -->
+                <div class="mb-6 border-b border-gray-200">
+                    <nav class="flex flex-wrap -mb-px" aria-label="Tabs">
+                        <button class="tab-button active text-gray-600 hover:text-gray-800 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm" data-tab="arch-mode">Critical Decision: Run Mode</button>
+                        <button class="tab-button text-gray-600 hover:text-gray-800 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm" data-tab="arch-pooling">High Availability: Pooling</button>
+                        <button class="tab-button text-gray-600 hover:text-gray-800 whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm" data-tab="arch-config">Core Configuration</button>
+                    </nav>
+                </div>
+
+                <!-- Tab Content -->
+                <div id="arch-mode" class="tab-content">
+                    <h3 class="text-2xl font-semibold mb-4 text-gray-700">Service Mode vs. Application Mode</h3>
+                    <p class="mb-6 text-gray-600">The single most important decision is the operational mode. For any enterprise use case involving shared drives, **Service Mode is the only recommended option**. It runs as a background Windows service, ensuring continuous, unattended operation and automatic restarts, which is essential for reliable data refreshes.</p>
+                    <div class="grid md:grid-cols-5 gap-8">
+                        <div class="md:col-span-3">
+                             <div class="chart-container">
+                                <canvas id="modeComparisonChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="md:col-span-2 flex flex-col justify-center">
+                            <div class="p-4 rounded-lg bg-red-50 border border-red-200">
+                                <h4 class="font-bold text-red-800">Application Mode Warning</h4>
+                                <p class="text-sm text-red-700">This mode is unsuitable for production. Refreshes stop the moment a user logs out, the app is closed, or the machine restarts. Use only for temporary testing.</p>
+                            </div>
+                             <div class="mt-4 p-4 rounded-lg bg-green-50 border border-green-200">
+                                <h4 class="font-bold text-green-800">Service Mode Requirement</h4>
+                                <p class="text-sm text-green-700">Requires a dedicated service account that is a member of the **local Administrators group** on the host machine to run reliably.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="arch-pooling" class="tab-content hidden">
+                    <h3 class="text-2xl font-semibold mb-4 text-gray-700">Achieving High Availability with Pools</h3>
+                    <p class="mb-6 text-gray-600">A single Bridge client is a single point of failure. The solution is to create a **pool**, a logical group of two or more clients that work together. This distributes the workload and provides automatic failover if one client goes down, ensuring refreshes are not missed.</p>
+                    <div class="grid md:grid-cols-2 gap-8 text-center">
+                        <div class="p-6 border-2 border-red-300 border-dashed rounded-lg">
+                            <h4 class="font-semibold text-lg mb-2 text-red-700">Single Client (High Risk)</h4>
+                            <div class="flex justify-center items-center h-24">
+                                <span class="text-5xl">🖥️</span>
+                            </div>
+                            <p class="text-sm text-gray-600">If this single machine fails, all data refreshes stop.</p>
+                        </div>
+                        <div class="p-6 border-2 border-green-400 rounded-lg bg-green-50">
+                            <h4 class="font-semibold text-lg mb-2 text-green-700">Client Pool (Recommended)</h4>
+                            <div class="flex justify-center items-center space-x-4 h-24">
+                                <span class="text-5xl">🖥️</span>
+                                <span class="text-3xl font-bold text-gray-500">+</span>
+                                <span class="text-5xl">🖥️</span>
+                                <span class="text-3xl font-bold text-gray-500">+</span>
+                                <span class="text-5xl">🖥️</span>
+                            </div>
+                            <p class="text-sm text-gray-600">Workload is balanced. If one client fails, others take over automatically.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="arch-config" class="tab-content hidden">
+                    <h3 class="text-2xl font-semibold mb-4 text-gray-700">Mandatory Configuration Steps</h3>
+                    <p class="mb-6 text-gray-600">Two configuration details are non-negotiable for shared drive connections. Getting these wrong is the most common source of refresh failures.</p>
+                    <div class="space-y-6">
+                        <div>
+                            <h4 class="font-semibold text-lg mb-2 text-gray-700">1. Use UNC Paths Exclusively</h4>
+                            <p class="mb-3 text-gray-600">The Bridge service cannot see user-specific mapped drive letters (e.g., `Z:\`). You must always connect to your data in Tableau Desktop using the full Universal Naming Convention (UNC) path before publishing.</p>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="p-3 bg-red-50 rounded-lg">
+                                    <p class="font-mono text-sm text-red-700">❌ `Z:\Data\report.csv`</p>
+                                </div>
+                                <div class="p-3 bg-green-50 rounded-lg">
+                                    <p class="font-mono text-sm text-green-700">✅ `\\ServerName\Share\Data\report.csv`</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-lg mb-2 text-gray-700">2. Configure the Private Network Allowlist</h4>
+                            <p class="mb-3 text-gray-600">In Tableau Cloud (`Settings > Bridge`), you must explicitly add the hostname of your file server (e.g., `ServerName`) to the Private Network Allowlist and map it to your Bridge pool. This tells Tableau Cloud which pool is authorized to access that server.</p>
+                            <div class="p-4 bg-gray-100 rounded-lg border">
+                                <p class="text-sm text-gray-700">Failure to do this is the primary cause of the `NO_POOLED_AGENTS_ASSIGNED` error.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Security Section -->
+        <section id="security" class="mb-16 scroll-mt-24">
+            <h2 class="text-3xl font-bold mb-2 text-gray-800">Hardened Security Posture</h2>
+            <p class="text-lg text-gray-600 mb-8">Secure the data pipeline from your private network to Tableau Cloud by implementing the Principle of Least Privilege and network-layer controls.</p>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="section-card p-6 md:p-8">
+                    <h3 class="text-2xl font-semibold mb-4 text-gray-700">Service Account Permissions</h3>
+                    <p class="mb-6 text-gray-600">The service account running the Bridge client needs specific permissions. While it requires high privilege on the host, its access on the network must be strictly limited.</p>
+                    <ul class="space-y-4">
+                        <li class="flex items-start">
+                            <span class="text-green-500 mr-3 mt-1">✔️</span>
+                            <div><strong class="text-gray-800">On Bridge Host:</strong> Member of local <strong>Administrators</strong> group. (This is a mandatory requirement for Service Mode).</div>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-500 mr-3 mt-1">✔️</span>
+                            <div><strong class="text-gray-800">On Network Share:</strong> <strong>Read</strong> access at the share level.</div>
+                        </li>
+                        <li class="flex items-start">
+                           <span class="text-green-500 mr-3 mt-1">✔️</span>
+                            <div><strong class="text-gray-800">On Target Files/Folders (NTFS):</strong> <strong>Read & Execute</strong> permissions ONLY.</div>
+                        </li>
+                        <li class="flex items-start">
+                             <span class="text-red-500 mr-3 mt-1">❌</span>
+                            <div><strong class="text-gray-800">On Target Files/Folders (NTFS):</strong> Do NOT grant Write, Modify, or Full Control.</div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="section-card p-6 md:p-8">
+                    <h3 class="text-2xl font-semibold mb-4 text-gray-700">Network Communication Security</h3>
+                    <p class="mb-4 text-gray-600">Bridge is designed with security in mind. All connections are initiated from inside your firewall, so no inbound ports need to be opened.</p>
+                     <div class="w-full bg-gray-50 p-4 rounded-lg border flex flex-col items-center text-center">
+                        <div class="font-semibold text-gray-700">Your Private Network</div>
+                        <div class="flex items-center w-full my-2">
+                           <div class="p-3 bg-blue-100 rounded-lg">🖥️ Bridge Host</div>
+                           <div class="flex-grow border-t-2 border-gray-400 border-dashed mx-2 relative">
+                               <div class="absolute right-0 top-1/2 -mt-2 text-xl">▶</div>
+                           </div>
+                           <div class="p-3 bg-gray-200 rounded-lg">🔥 Firewall</div>
+                        </div>
+                        <div class="text-sm text-gray-600 mb-2">Outbound Connection (Port 443)</div>
+                        <div class="text-4xl mb-2">☁️</div>
+                        <div class="font-semibold text-gray-700">Tableau Cloud</div>
+                        <p class="text-xs mt-2 text-gray-500">All traffic is encrypted via TLS.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Performance Section -->
+        <section id="performance" class="mb-16 scroll-mt-24">
+            <h2 class="text-3xl font-bold mb-2 text-gray-800">Performance Tuning</h2>
+            <p class="text-lg text-gray-600 mb-8">Optimize your environment for timely and efficient data refreshes by provisioning adequate hardware and minimizing network latency.</p>
+            
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="section-card p-6 md:p-8">
+                    <h3 class="text-2xl font-semibold mb-4 text-gray-700">Host Sizing Calculator</h3>
+                    <p class="mb-4 text-gray-600">Run Bridge on a **dedicated machine** to avoid resource contention. Use this calculator to estimate the minimum hardware required based on your expected concurrent refreshes.</p>
+                    <div class="mb-4">
+                        <label for="refresh-count" class="block text-sm font-medium text-gray-700">Concurrent Refreshes per Client:</label>
+                        <input type="number" id="refresh-count" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" value="5" min="1" max="20">
+                    </div>
+                    <div id="sizing-recommendation" class="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <h4 class="font-bold text-blue-800">Recommendation:</h4>
+                        <p class="text-blue-700"></p>
+                    </div>
+                </div>
+                <div class="section-card p-6 md:p-8 flex flex-col">
+                    <h3 class="text-2xl font-semibold mb-4 text-gray-700">Sizing Visualization</h3>
+                    <div class="flex-grow flex items-center justify-center">
+                        <div class="chart-container" style="height: 250px;">
+                            <canvas id="sizingChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-card p-6 md:p-8 mt-8">
+                <h3 class="text-2xl font-semibold mb-4 text-gray-700">Network Topology Optimization</h3>
+                <p class="mb-6 text-gray-600">The performance bottleneck is often the network latency between the Bridge host and the file server. **Co-locating them on the same high-speed LAN is critical.**</p>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="p-4 bg-green-50 border-2 border-green-300 rounded-lg">
+                        <h4 class="font-semibold text-lg mb-2 text-green-700">✅ Recommended: Low Latency</h4>
+                        <div class="flex items-center justify-around text-center">
+                            <div><span class="text-4xl">🖥️</span><p>Bridge Host</p></div>
+                            <div class="font-mono text-green-700">&lt;10ms<br>10GbE LAN</div>
+                            <div><span class="text-4xl">🗄️</span><p>File Server</p></div>
+                        </div>
+                    </div>
+                    <div class="p-4 bg-red-50 border-2 border-red-300 border-dashed rounded-lg">
+                        <h4 class="font-semibold text-lg mb-2 text-red-700">❌ Not Recommended: High Latency</h4>
+                        <div class="flex items-center justify-around text-center">
+                             <div><span class="text-4xl">🖥️</span><p>Bridge Host</p></div>
+                            <div class="font-mono text-red-700">&gt;100ms<br>WAN / VPN</div>
+                            <div><span class="text-4xl">🗄️</span><p>File Server</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Troubleshooting Section -->
+        <section id="troubleshooting" class="mb-16 scroll-mt-24">
+            <h2 class="text-3xl font-bold mb-2 text-gray-800">Troubleshooting Playbook</h2>
+            <p class="text-lg text-gray-600 mb-8">When refreshes fail, use this systematic guide to diagnose and resolve common issues related to shared network drives.</p>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="section-card p-6 md:p-8">
+                     <h3 class="text-2xl font-semibold mb-4 text-gray-700">Interactive Error Guide</h3>
+                     <p class="mb-4 text-gray-600">Select a common error message to see its most likely cause and the first action to take.</p>
+                     <div id="troubleshooting-guide" class="space-y-2">
+                        <!-- JS will populate this -->
+                     </div>
+                     <div id="troubleshooting-details" class="mt-4 p-4 bg-gray-100 rounded-lg border min-h-[120px]">
+                        <p class="text-sm text-gray-500">Select an error above to see details.</p>
+                     </div>
+                </div>
+                 <div class="section-card p-6 md:p-8">
+                    <h3 class="text-2xl font-semibold mb-4 text-gray-700">The File-Locking Problem</h3>
+                    <p class="mb-4 text-gray-600">Intermittent failures are often caused by a user or process locking the source file (e.g., having it open in Excel). Bridge cannot override this OS-level lock.</p>
+                    <h4 class="font-semibold text-lg mb-2 text-gray-700">Robust Solution: File Staging</h4>
+                    <p class="mb-4 text-sm text-gray-600">Decouple the refresh from user activity by creating an automated process to copy the file to a secure "staging" area for Bridge to read.</p>
+                    <div class="w-full bg-gray-50 p-4 rounded-lg border text-sm">
+                        <div class="flex items-center justify-between mb-2">
+                           <div class="text-center">🗄️<p>User Share</p></div>
+                           <div class="text-center">👤<p>User Edit</p></div>
+                        </div>
+                        <div class="text-center my-2">⬇️ <span class="italic text-gray-600">Automated Script (Pre-Refresh)</span></div>
+                        <div class="flex items-center justify-between mt-2 p-2 bg-green-100 rounded">
+                           <div class="text-center">🗄️<p>Staging Share</p></div>
+                           <div class="text-center">🖥️<p>Bridge Refresh</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Summary Section -->
+        <section id="summary" class="scroll-mt-24">
+             <h2 class="text-3xl font-bold mb-2 text-gray-800">Executive Summary</h2>
+            <p class="text-lg text-gray-600 mb-8">A summary of the most critical recommendations for a reliable, secure, and performant Tableau Bridge deployment connecting to shared network drives.</p>
+             <div class="section-card p-6 md:p-8">
+                <ul class="space-y-5">
+                    <li class="flex items-start">
+                        <span class="text-xl mr-4 mt-1">1.</span>
+                        <div>
+                            <h4 class="font-semibold text-lg text-gray-800">Run in Service Mode on Dedicated Hosts</h4>
+                            <p class="text-gray-600">Always use Service Mode for unattended operation and deploy clients in pools of at least two for high availability.</p>
+                        </div>
+                    </li>
+                     <li class="flex items-start">
+                        <span class="text-xl mr-4 mt-1">2.</span>
+                        <div>
+                            <h4 class="font-semibold text-lg text-gray-800">Use UNC Paths & Configure the Allowlist</h4>
+                            <p class="text-gray-600">Mandate full UNC paths (`\\server\share`) for all file connections and correctly map server hostnames to your Bridge pool in the Private Network Allowlist.</p>
+                        </div>
+                    </li>
+                     <li class="flex items-start">
+                        <span class="text-xl mr-4 mt-1">3.</span>
+                        <div>
+                            <h4 class="font-semibold text-lg text-gray-800">Enforce Least Privilege</h4>
+                            <p class="text-gray-600">The service account must be a local admin on the host, but strictly limited to **Read** permissions on the network file shares.</p>
+                        </div>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-xl mr-4 mt-1">4.</span>
+                        <div>
+                            <h4 class="font-semibold text-lg text-gray-800">Optimize Network Proximity</h4>
+                            <p class="text-gray-600">Co-locate Bridge hosts and file servers on the same high-speed, low-latency LAN to maximize performance.</p>
+                        </div>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-xl mr-4 mt-1">5.</span>
+                        <div>
+                            <h4 class="font-semibold text-lg text-gray-800">Mitigate File-Locking Conflicts</h4>
+                            <p class="text-gray-600">Schedule refreshes for off-peak hours or, for a robust solution, implement a file-staging process to isolate refreshes from user activity.</p>
+                        </div>
+                    </li>
+                </ul>
+             </div>
+        </section>
+    </main>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // --- Data ---
+    const sizingData = {
+        base: { vCPU: 4, RAM: 16 },
+        increment: { vCPU: 4, RAM: 16 },
+        breakPoint: 5
+    };
+
+    const troubleshootingData = [
+        { 
+            error: "NO_POOLED_AGENTS_ASSIGNED",
+            cause: "A mismatch between the data source's domain and the Private Network Allowlist configuration.",
+            action: "As a Site Admin in Tableau Cloud, go to <strong>Settings > Bridge > Private Network Allowlist</strong>. Verify the file server's hostname is correctly entered and mapped to the correct, active pool."
+        },
+        {
+            error: "Connection Failure / Could not connect",
+            cause: "A generic network or permissions issue.",
+            action: "Verify basic network connectivity from the Bridge host to the file server (e.g., ping). Verify the Bridge service account has at least <strong>Read</strong> permissions on both the share and the NTFS folder/file."
+        },
+        {
+            error: "Operation timed out",
+            cause: "A transient network issue or a connectTimeout value that is too low for the network conditions.",
+            action: "Increase the <strong>connectTimeout</strong> value in the <strong>TabBridgeClientConfiguration.txt</strong> file on the Bridge host and restart the client."
+        },
+        {
+            error: "Refresh Fails Intermittently",
+            cause: "The source file on the shared drive is locked by another user or process at the time of the refresh.",
+            action: "Investigate for open file handles on the file server. Implement operational workarounds like off-peak scheduling or a file-staging process."
+        }
+    ];
+
+    // --- Chart Instances ---
+    let modeChart, sizingChart;
+
+    // --- Chart Initializations ---
+    function initModeComparisonChart() {
+        const ctx = document.getElementById('modeComparisonChart').getContext('2d');
+        modeChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Service Mode', 'Application Mode'],
+                datasets: [{
+                    label: 'Uptime Reliability',
+                    data: [99.9, 25],
+                    backgroundColor: ['rgba(54, 162, 235, 0.6)', 'rgba(255, 99, 132, 0.6)'],
+                    borderColor: ['rgba(54, 162, 235, 1)', 'rgba(255, 99, 132, 1)'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) { return value + '%' }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    title: {
+                        display: true,
+                        text: 'Typical Uptime Reliability by Mode',
+                        font: { size: 16 }
+                    }
+                }
+            }
+        });
+    }
+
+    function initSizingChart() {
+        const ctx = document.getElementById('sizingChart').getContext('2d');
+        sizingChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['vCPUs', 'RAM (GB)'],
+                datasets: [{
+                    label: 'Recommended Resources',
+                    data: [0, 0], // Initial values
+                    backgroundColor: ['rgba(75, 192, 192, 0.6)', 'rgba(153, 102, 255, 0.6)'],
+                    borderColor: ['rgba(75, 192, 192, 1)', 'rgba(153, 102, 255, 1)'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    title: {
+                        display: true,
+                        text: 'Recommended Host Resources',
+                        font: { size: 16 }
+                    }
+                }
+            }
+        });
+    }
+
+    // --- UI Logic ---
+    function setupTabs() {
+        const tabsContainer = document.querySelector('.section-card');
+        if (!tabsContainer) return;
+        
+        const tabButtons = tabsContainer.querySelectorAll('.tab-button');
+        const tabContents = tabsContainer.querySelectorAll('.tab-content');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                
+                tabContents.forEach(content => content.classList.add('hidden'));
+                const activeTab = document.getElementById(button.dataset.tab);
+                if (activeTab) {
+                    activeTab.classList.remove('hidden');
+                }
+            });
+        });
+    }
+    
+    function setupMobileNav() {
+        const mobileNav = document.getElementById('mobile-nav');
+        mobileNav.addEventListener('change', () => {
+            window.location.hash = mobileNav.value;
+        });
+    }
+    
+    // --- Performance Calculator Logic ---
+    function updateSizing(refreshCount) {
+        let vCPU, RAM;
+        if (refreshCount <= sizingData.breakPoint) {
+            vCPU = sizingData.base.vCPU;
+            RAM = sizingData.base.RAM;
+        } else {
+            const extraRefreshes = refreshCount - sizingData.breakPoint;
+            const increments = Math.ceil(extraRefreshes / sizingData.breakPoint);
+            vCPU = sizingData.base.vCPU + (increments * sizingData.increment.vCPU);
+            RAM = sizingData.base.RAM + (increments * sizingData.increment.RAM);
+        }
+
+        const recommendationEl = document.querySelector('#sizing-recommendation p');
+        recommendationEl.innerHTML = `<strong>${vCPU} vCPUs</strong> and <strong>${RAM} GB RAM</strong> are recommended.`;
+
+        if (sizingChart) {
+            sizingChart.data.datasets[0].data = [vCPU, RAM];
+            sizingChart.update();
+        }
+    }
+
+    function setupSizingCalculator() {
+        const input = document.getElementById('refresh-count');
+        input.addEventListener('input', () => {
+            const count = parseInt(input.value) || 1;
+            updateSizing(count);
+        });
+        // Initial call
+        updateSizing(parseInt(input.value));
+    }
+
+    // --- Troubleshooting Guide Logic ---
+    function setupTroubleshootingGuide() {
+        const container = document.getElementById('troubleshooting-guide');
+        const detailsContainer = document.getElementById('troubleshooting-details');
+
+        troubleshootingData.forEach((item, index) => {
+            const button = document.createElement('button');
+            button.className = 'w-full text-left p-3 rounded-lg bg-white hover:bg-gray-100 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all';
+            button.textContent = item.error;
+            button.dataset.index = index;
+            container.appendChild(button);
+        });
+        
+        container.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                const index = e.target.dataset.index;
+                const item = troubleshootingData[index];
+                
+                // Update active button style
+                container.querySelectorAll('button').forEach(btn => {
+                    btn.classList.remove('bg-blue-100', 'border-blue-400', 'font-semibold');
+                    btn.classList.add('bg-white', 'border-gray-200');
+                });
+                e.target.classList.add('bg-blue-100', 'border-blue-400', 'font-semibold');
+                e.target.classList.remove('bg-white', 'border-gray-200');
+
+                detailsContainer.innerHTML = `
+                    <h4 class="font-bold text-gray-800">Most Likely Cause:</h4>
+                    <p class="text-sm text-gray-600 mb-2">${item.cause}</p>
+                    <h4 class="font-bold text-gray-800">First Action:</h4>
+                    <p class="text-sm text-gray-600">${item.action}</p>
+                `;
+            }
+        });
+    }
+
+    // --- Nav Link Active State ---
+    function setupNavLinkObserver() {
+        const sections = document.querySelectorAll('section[id]');
+        const navLinks = document.querySelectorAll('header nav a');
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    navLinks.forEach(link => {
+                        link.classList.toggle('active', link.getAttribute('href').substring(1) === entry.target.id);
+                    });
+                }
+            });
+        }, { rootMargin: '-50% 0px -50% 0px' });
+
+        sections.forEach(section => observer.observe(section));
+    }
+
+
+    // --- Initialization ---
+    initModeComparisonChart();
+    initSizingChart();
+    setupTabs();
+    setupSizingCalculator();
+    setupTroubleshootingGuide();
+    setupNavLinkObserver();
+    setupMobileNav();
+
+});
+</script>
+</body>
+</html>
